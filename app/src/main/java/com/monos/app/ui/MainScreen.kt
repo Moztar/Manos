@@ -1,8 +1,8 @@
 package com.monos.app.ui
 
-import android.view.MotionEvent
 import android.graphics.Matrix
 import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
@@ -125,29 +124,18 @@ fun MainScreen(
         containerColor = BackgroundDark,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        val keyboardOffset = if (displayState.orientation == ScreenOrientation.PORTRAIT) 310.dp else 0.dp
-        
-        // Checklist status monitoring (developer guidelines integration verification)
-        /*
-         * INTEGRATION CHECKLIST:
-         * [x] JNI PRoot tracing attached via startPRootNative
-         * [x] Direct surface drawing configured in graphics_renderer.cpp
-         * [x] Local TLS ADB connection client and sync disabled commands
-         * [x] Resumable chunk downloader redirects bypass parser
-         * [x] Custom keyboard alphanumeric keysyms mapped and overlayed
-         * [x] Contingency system feature flags stored in SharedPreferences
-         */
-
+        // Nav bar height is 80dp. Dashboard does not need keyboard space.
+        // CanvasTab manages its own viewport compression internally.
         Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Main viewport compressed dynamically when solid Portrait keyboard is drawn
+            // Content area: leave space for bottom nav bar only
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 80.dp + keyboardOffset) // Accounts for bottom navigation space
+                    .padding(bottom = 80.dp)
             ) {
                 when (selectedTab) {
                     0 -> DashboardTab(
@@ -172,13 +160,6 @@ fun MainScreen(
                     )
                 }
             }
-
-            // Custom Keyboard Overlay sitting on Z-axis peak
-            CustomKeyboardOverlay(
-                displayState = displayState,
-                viewModel = displayViewModel,
-                modifier = Modifier.fillMaxSize()
-            )
 
             // Premium Custom Navigation Bar with U-cutout and Virtualization Toggle FAB
             Box(
@@ -354,6 +335,7 @@ fun CanvasTab(
     displayViewModel: X11DisplayViewModel
 ) {
     if (!virtualizationActive) {
+        // Offline placeholder — clean centered message
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -374,27 +356,121 @@ fun CanvasTab(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
                 )
+                Text(
+                    text = "Press ▶ to start the Ubuntu container",
+                    color = TextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace
+                )
             }
         }
     } else {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val density = LocalDensity.current
-            val viewWidthPx = with(density) { constraints.maxWidth.toPx() }
-            val viewHeightPx = with(density) { constraints.maxHeight.toPx() }
-            
-            // Calculate aspect ratio transformation matrix
-            val transformMatrix = displayViewModel.calculateTransformationMatrix(
-                viewWidth = viewWidthPx,
-                viewHeight = viewHeightPx,
-                x11Width = displayState.resolutionWidth.toFloat(),
-                x11Height = displayState.resolutionHeight.toFloat()
+        // Active virtualization: Column splits canvas and keyboard area cleanly.
+        // Portrait: Canvas fills remaining space, keyboard sits below as fixed-height block.
+        // Landscape: Keyboard overlay is transparent/floating — canvas uses full space.
+        val isPortrait = displayState.orientation == ScreenOrientation.PORTRAIT
+        val keyboardVisible = displayState.keyboardVisible
+        // Portrait keyboard height constant (matches CustomKeyboardOverlay portrait block height)
+        val keyboardHeightDp = 310.dp
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ─── Canvas Area ─── fills all remaining height above keyboard
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f) // Takes all space NOT occupied by the keyboard block
+            ) {
+                val viewWidthPx = constraints.maxWidth.toFloat()
+                val viewHeightPx = constraints.maxHeight.toFloat()
+
+                val transformMatrix = displayViewModel.calculateTransformationMatrix(
+                    viewWidth = viewWidthPx,
+                    viewHeight = viewHeightPx,
+                    x11Width = displayState.resolutionWidth.toFloat(),
+                    x11Height = displayState.resolutionHeight.toFloat()
+                )
+
+                X11CanvasView(
+                    transformationMatrix = transformMatrix,
+                    useBilinear = displayState.filteringMode == FilteringMode.BILINEAR,
+                    inputMode = displayState.inputMode,
+                    pointerSpeed = displayState.pointerSpeed,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Landscape: floating transparent macro overlay sits on top of canvas (Z-axis)
+                // It does NOT push canvas down — it is intentionally semi-transparent
+                if (!isPortrait) {
+                    CustomKeyboardOverlay(
+                        displayState = displayState,
+                        viewModel = displayViewModel,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            // ─── Portrait Keyboard Block ─── solid, pushes canvas up via Column weight
+            if (isPortrait) {
+                AnimatedVisibility(
+                    visible = keyboardVisible,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(keyboardHeightDp)
+                    ) {
+                        CustomKeyboardOverlay(
+                            displayState = displayState,
+                            viewModel = displayViewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                // Always reserve a minimal keyboard toggle strip at the bottom in portrait
+                // even when keyboard is hidden, so user can pull it back up
+                if (!keyboardVisible) {
+                    KeyboardToggleStrip(
+                        onShow = { displayViewModel.updateKeyboardVisibility(true) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun KeyboardToggleStrip(onShow: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    listOf(Color.Transparent, SurfaceDark)
+                )
             )
-            
-            X11CanvasView(
-                transformationMatrix = transformMatrix,
-                useBilinear = displayState.filteringMode == FilteringMode.BILINEAR,
-                inputMode = displayState.inputMode,
-                pointerSpeed = displayState.pointerSpeed
+            .clickable { onShow() },
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Show Keyboard",
+                tint = PrimaryNeon,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "KEYBOARD",
+                color = PrimaryNeon,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.5.sp
             )
         }
     }

@@ -325,7 +325,7 @@ Java_com_monos_app_ui_components_CustomKeyboardOverlayKt_sendKeySymNative(
     // and sends XTestFakeKeyEvent(display, keycode, is_press, delay) to simulate standard keyboard strokes.
     
     LOGI("[Input JNI] KeySym Event: keysym=%lld (0x%llx), action=%d",
-         keysym, keysym, action);
+         (long long)keysym, (long long)keysym, action);
 }
 
 extern "C"

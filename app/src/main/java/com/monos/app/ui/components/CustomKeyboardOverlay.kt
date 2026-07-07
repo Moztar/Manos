@@ -1,6 +1,7 @@
 package com.monos.app.ui.components
 
 import android.view.KeyEvent
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,13 +10,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,8 @@ import com.monos.app.ui.DisplayState
 import com.monos.app.ui.ScreenOrientation
 import com.monos.app.ui.X11DisplayViewModel
 import com.monos.app.ui.theme.*
+
+private const val TAG = "CustomKeyboardOverlay"
 
 // JNI Endpoint mapping keysym injections to the X11 server instance
 external fun sendKeySymNative(keySym: Long, action: Int)
@@ -34,12 +38,13 @@ fun CustomKeyboardOverlay(
     viewModel: X11DisplayViewModel,
     modifier: Modifier = Modifier
 ) {
-    val configuration = LocalConfiguration.current
     val isLandscape = displayState.orientation == ScreenOrientation.LANDSCAPE
 
-    Box(modifier = modifier.fillMaxSize()) {
-        if (isLandscape) {
-            // Landscape View: Transparent 2x8 grid (16 buttons)
+    if (isLandscape) {
+        // Landscape: entire overlay is transparent/floating on top of canvas
+        // The Box wraps both the macro grid and the optional slide-up full keyboard
+        Box(modifier = modifier.fillMaxSize()) {
+            // Fixed transparent 2x8 macro grid (top-right corner)
             LandscapeKeyboardLayout(
                 state = displayState,
                 viewModel = viewModel,
@@ -50,7 +55,7 @@ fun CustomKeyboardOverlay(
                     .alpha(displayState.keyboardOpacity)
             )
 
-            // Dynamic Slide-up 75% Panel (Landscape Overlay triggered via slide toggle)
+            // Optional slide-up 75% keyboard panel (triggered via Slide macro button)
             AnimatedVisibility(
                 visible = displayState.keyboardVisible,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -60,41 +65,10 @@ fun CustomKeyboardOverlay(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xE60D0E15)) // Semi-transparent Slate
+                        .background(Color(0xEE0D0E15))
                         .border(1.dp, SurfaceLight, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                         .padding(8.dp)
                 ) {
-                    // Keystroke Text Preview Bar (Input Column)
-                    TextPreviewBar(
-                        content = displayState.textPreviewContent,
-                        onClear = { viewModel.updateTextPreviewContent("") }
-                    )
-                    
-                    // 75% Keyboard layout
-                    Keyboard75Percent(
-                        onKeyPressed = { keysym ->
-                            // Update dynamic Text Preview for alphanumeric keysyms
-                            handleTextPreview(keysym, displayState, viewModel)
-                            
-                            // Inject via JNI
-                            sendKeySymNative(keysym, 0) // Action: Down
-                            sendKeySymNative(keysym, 1) // Action: Up
-                        }
-                    )
-                }
-            }
-        } else {
-            // Portrait View: Keyboard sits solid at bottom of screen
-            // Height adjustments are calculated so Canvas fits perfectly above
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(BackgroundDark)
-                    .border(1.dp, SurfaceLight, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .padding(8.dp)
-            ) {
-                Column {
                     TextPreviewBar(
                         content = displayState.textPreviewContent,
                         onClear = { viewModel.updateTextPreviewContent("") }
@@ -109,8 +83,63 @@ fun CustomKeyboardOverlay(
                 }
             }
         }
+    } else {
+        // Portrait: CanvasTab controls visibility and animation via AnimatedVisibility.
+        // This composable simply fills its parent container with the keyboard content.
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(BackgroundDark)
+                .border(1.dp, SurfaceLight, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            // Close/Hide strip at the top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(28.dp)
+                    .clickable { viewModel.updateKeyboardVisibility(false) },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Hide Keyboard",
+                        tint = TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "HIDE KEYBOARD",
+                        color = TextMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+
+            // Text preview bar
+            TextPreviewBar(
+                content = displayState.textPreviewContent,
+                onClear = { viewModel.updateTextPreviewContent("") }
+            )
+
+            // Main 75% key grid — takes remaining space
+            Keyboard75Percent(
+                onKeyPressed = { keysym ->
+                    handleTextPreview(keysym, displayState, viewModel)
+                    sendKeySymNative(keysym, 0)
+                    sendKeySymNative(keysym, 1)
+                }
+            )
+        }
     }
 }
+
 
 @Composable
 fun TextPreviewBar(

@@ -111,50 +111,56 @@ class UbuntuTelemetryService : Service() {
         }
     }
 
-    private suspend fun handleClientConnection(socket: Socket) = withContext(Dispatchers.IO) {
-        try {
-            val reader = socket.getInputStream().bufferedReader()
-            Log.d(TAG, "Telemetry client connected")
+    private suspend fun handleClientConnection(socket: Socket) {
+        withContext(Dispatchers.IO) {
+            try {
+                val reader = socket.getInputStream().bufferedReader()
+                Log.d(TAG, "Telemetry client connected")
 
-            while (isActive) {
-                val line = reader.readLine() ?: break
-                
-                if (line.contains("FOCUS_IN:ROLE_TEXT") || line.contains("FOCUS_IN:ROLE_TERMINAL")) {
-                    withContext(Dispatchers.Main) {
-                        focusListener?.invoke(true)
-                    }
-                } else if (line.contains("FOCUS_OUT") || line.contains("ROLE_NONE")) {
-                    withContext(Dispatchers.Main) {
-                        focusListener?.invoke(false)
+                while (isActive) {
+                    val line = reader.readLine() ?: break
+                    
+                    if (line.contains("FOCUS_IN:ROLE_TEXT") || line.contains("FOCUS_IN:ROLE_TERMINAL")) {
+                        withContext(Dispatchers.Main) {
+                            focusListener?.invoke(true)
+                        }
+                    } else if (line.contains("FOCUS_OUT") || line.contains("ROLE_NONE")) {
+                        withContext(Dispatchers.Main) {
+                            focusListener?.invoke(false)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Telemetry read error: ${e.message}")
+            } finally {
+                try {
+                    socket.close()
+                } catch (e: Exception) { }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Telemetry read error: ${e.message}")
-        } finally {
-            try {
-                socket.close()
-            } catch (e: Exception) { }
+            Unit
         }
     }
 
-    private suspend fun handleClipboardConnection(socket: Socket) = withContext(Dispatchers.IO) {
-        try {
-            // Read complete streamed clipboard content payload (UTF-8)
-            val textPayload = socket.getInputStream().bufferedReader(Charsets.UTF_8).use { it.readText() }
-            Log.d(TAG, "Read guest clipboard payload (Size: ${textPayload.length} chars)")
-            
-            if (textPayload.isNotEmpty()) {
-                withContext(Dispatchers.Main) {
-                    clipboardListener?.invoke(textPayload)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Clipboard connection read error: ${e.message}")
-        } finally {
+    private suspend fun handleClipboardConnection(socket: Socket) {
+        withContext(Dispatchers.IO) {
             try {
-                socket.close()
-            } catch (e: Exception) { }
+                // Read complete streamed clipboard content payload (UTF-8)
+                val textPayload = socket.getInputStream().bufferedReader(Charsets.UTF_8).use { it.readText() }
+                Log.d(TAG, "Read guest clipboard payload (Size: ${textPayload.length} chars)")
+                
+                if (textPayload.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        clipboardListener?.invoke(textPayload)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Clipboard connection read error: ${e.message}")
+            } finally {
+                try {
+                    socket.close()
+                } catch (e: Exception) { }
+            }
+            Unit
         }
     }
 

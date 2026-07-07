@@ -1,0 +1,12 @@
+[
+{
+  "directory": "E:/Build Apps/Monos/app/.cxx/Debug/2f673b4w/armeabi-v7a",
+  "command": "C:\\Users\\Administrator\\AppData\\Local\\Android\\Sdk\\ndk\\26.1.10909125\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=armv7-none-linux-androideabi26 --sysroot=C:/Users/Administrator/AppData/Local/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Dmonos_native_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles\\monos_native.dir\\proot_emulation.cpp.o -c \"E:\\Build Apps\\Monos\\app\\src\\main\\cpp\\proot_emulation.cpp\"",
+  "file": "E:\\Build Apps\\Monos\\app\\src\\main\\cpp\\proot_emulation.cpp"
+},
+{
+  "directory": "E:/Build Apps/Monos/app/.cxx/Debug/2f673b4w/armeabi-v7a",
+  "command": "C:\\Users\\Administrator\\AppData\\Local\\Android\\Sdk\\ndk\\26.1.10909125\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=armv7-none-linux-androideabi26 --sysroot=C:/Users/Administrator/AppData/Local/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Dmonos_native_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles\\monos_native.dir\\graphics_renderer.cpp.o -c \"E:\\Build Apps\\Monos\\app\\src\\main\\cpp\\graphics_renderer.cpp\"",
+  "file": "E:\\Build Apps\\Monos\\app\\src\\main\\cpp\\graphics_renderer.cpp"
+}
+]

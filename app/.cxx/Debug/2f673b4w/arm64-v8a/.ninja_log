@@ -1,0 +1,6 @@
+# ninja log v5
+7	1890	8051504678873925	CMakeFiles/monos_native.dir/graphics_renderer.cpp.o	55e86a0f5cba681b
+1	2401	8051504684077691	CMakeFiles/monos_native.dir/proot_emulation.cpp.o	1e963fa90f7d4b85
+2401	2554	8051504685650568	E:/Build Apps/Monos/app/build/intermediates/cxx/Debug/2f673b4w/obj/arm64-v8a/libmonos_native.so	b196311cd7992aa9
+17	6132	8051507156864189	CMakeFiles/monos_native.dir/graphics_renderer.cpp.o	55e86a0f5cba681b
+6133	6483	8051507160426553	E:/Build Apps/Monos/app/build/intermediates/cxx/Debug/2f673b4w/obj/arm64-v8a/libmonos_native.so	b196311cd7992aa9

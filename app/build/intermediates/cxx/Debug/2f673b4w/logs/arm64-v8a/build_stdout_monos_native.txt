@@ -1,0 +1,2 @@
+ninja: Entering directory `E:\Build Apps\Monos\app\.cxx\Debug\2f673b4w\arm64-v8a'
+ninja: no work to do.
