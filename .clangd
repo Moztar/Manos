@@ -1,0 +1,12 @@
+# Configuration for Clangd in VSCode / Editor on Windows
+# Set the include flags pointing to the local Android NDK directory to resolve 'jni.h' and GLES headers.
+
+CompileFlags:
+  Add:
+    - "-isystem"
+    # Change the path below to match your exact local Android SDK/NDK path:
+    - "C:/Users/Administrator/AppData/Local/Android/Sdk/ndk/26.1.10909125/sysroot/usr/include"
+    - "-isystem"
+    - "C:/Users/Administrator/AppData/Local/Android/Sdk/ndk/26.1.10909125/sysroot/usr/include/android"
+    - "-D__ANDROID__"
+    - "-std=c++17"
